@@ -1,0 +1,25 @@
+.{
+    .name = .kosm_gtk,
+    .version = "0.0.0",
+    .fingerprint = 0x368c556866b001e2, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .kosm_css = .{
+            .url = "git+https://git.nnstdios.com/nnra6864/kosm_css?ref=master#d8febeb3ed02300c017d73b3b74aad4a2ef33c6a",
+            .hash = "kosm_css-0.0.0-oGvx3AMZAACJot4e1UTaqndgNcmyAvLijBa2vuecpogE",
+        },
+        .kosm = .{
+            .url = "git+https://git.nnstdios.com/nnra6864/kosm?ref=master#0418cc09915e3f7e4d07ac91fb59a2d5b6c26374",
+            .hash = "kosm-0.0.0-YCShskebCgC9OlIjz2kMaqwx-iAKQtm7ur3WnP5_KW70",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "root.zig",
+        "App.zig",
+        "Colors.zig",
+        "gtk3.zig",
+        "README.md",
+    },
+}
