@@ -37,7 +37,9 @@ const gtk4_only = [_][]const u8{ "active_toggle_bg", "active_toggle_fg", "overvi
 
 /// Colors from the theme: windows from black (white in light mode) with its surface steps,
 /// text from white, the accent cyan and the states red, green and yellow, each with readable
-/// text from the theme's `contrast.on`; shadows are the theme's `surface.shadow`. The GTK
+/// text from the theme's `contrast.on`; shadows are the theme's `surface.shadow`. Windows,
+/// views, header bars, sidebars, cards, thumbnails and the tab overview take the theme's
+/// `background_alpha`; popovers, dialogs, the active toggle and borders stay opaque. The GTK
 /// theme is adw-gtk3 in the theme's mode, which apps are told to prefer.
 pub fn from(theme: kosm.Theme) App {
     const dark = theme.mode == .dark;
@@ -54,11 +56,13 @@ fn colorsFrom(theme: kosm.Theme) Colors {
     const palette = theme.palette;
     const variations = theme.variations;
     const foreground = if (theme.mode == .dark) palette.white else palette.black;
-    const background = theme.asBackground(if (theme.mode == .dark) palette.black else palette.white);
+    // Floating surfaces (popovers, dialogs) and lines stay opaque, so they read over any content.
+    const opaque_background = if (theme.mode == .dark) palette.black else palette.white;
+    const background = theme.asBackground(opaque_background);
     const raised = variations.surface.raised.apply(background);
-    const overlay = variations.surface.overlay.apply(background);
+    const overlay = variations.surface.overlay.apply(opaque_background);
     const shade = variations.surface.shadow.apply(background);
-    const border = variations.line.border.apply(background);
+    const border = variations.line.border.apply(opaque_background);
     const on = variations.contrast.on;
     const bright = variations.lightness.bright;
     return .{
@@ -242,6 +246,31 @@ test "a null file is not written, and from sets every color" {
     app.settings_files = .{ .gtk3 = null, .gtk4 = null, .gtk2 = null, .xsettingsd = null, .cursor = null };
     try app.apply(&fixture.output);
     try testing.expectEqual(1, fixture.plan.files.items.len);
+}
+
+test "the window's surfaces take the background alpha, popovers, dialogs and borders stay opaque" {
+    var theme = kosm.Theme.from(.{ .black = kosm.hex("041c26"), .white = kosm.hex("a3c5cc") }, .dark);
+    theme.background_alpha = 0.5;
+    const colors = from(theme).colors;
+    const translucent = [_]?kosm.Color{
+        colors.window_bg,            colors.view_bg,                    colors.headerbar_bg,
+        colors.headerbar_backdrop,   colors.sidebar_bg,                 colors.sidebar_backdrop,
+        colors.secondary_sidebar_bg, colors.secondary_sidebar_backdrop, colors.card_bg,
+        colors.thumbnail_bg,         colors.overview_bg,
+    };
+    for (translucent) |color| try testing.expectEqual(0.5, color.?.alpha);
+    const solid = [_]?kosm.Color{
+        colors.popover_bg,       colors.dialog_bg,      colors.active_toggle_bg,
+        colors.headerbar_border, colors.sidebar_border, colors.secondary_sidebar_border,
+        colors.window_fg,        colors.accent_bg,
+    };
+    for (solid) |color| try testing.expectEqual(1, color.?.alpha);
+    // The surfaces differ from the window by lightness only, so the alpha changes nothing else.
+    var opaque_theme = theme;
+    opaque_theme.background_alpha = 1;
+    const opaque_colors = from(opaque_theme).colors;
+    try testing.expectEqual(opaque_colors.view_bg.?.lightness, colors.view_bg.?.lightness);
+    try testing.expectEqual(opaque_colors.popover_bg.?, colors.popover_bg.?);
 }
 
 test "settings are written whole to every settings file, each with the keys its GTK reads" {
