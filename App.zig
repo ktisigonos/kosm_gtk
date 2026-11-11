@@ -39,7 +39,8 @@ const gtk4_only = [_][]const u8{ "active_toggle_bg", "active_toggle_fg", "overvi
 /// text from white, the accent cyan and the states red, green and yellow, each with readable
 /// text from the theme's `contrast.on`; shadows are the theme's `surface.shadow`. Windows,
 /// views, header bars, sidebars, cards, thumbnails and the tab overview take the theme's
-/// `background_alpha`; popovers, dialogs, the active toggle and borders stay opaque. The GTK
+/// `background_alpha`, and so does the active toggle; popovers, dialogs and borders stay
+/// opaque. The GTK
 /// theme is adw-gtk3 in the theme's mode, which apps are told to prefer.
 pub fn from(theme: kosm.Theme) App {
     const dark = theme.mode == .dark;
@@ -112,7 +113,7 @@ fn colorsFrom(theme: kosm.Theme) Colors {
         .thumbnail_bg = raised,
         .thumbnail_fg = foreground,
         .shade = shade,
-        .active_toggle_bg = overlay,
+        .active_toggle_bg = variations.surface.overlay.apply(background),
         .active_toggle_fg = foreground,
         .overview_bg = background,
         .overview_fg = foreground,
@@ -256,13 +257,14 @@ test "the window's surfaces take the background alpha, popovers, dialogs and bor
         colors.window_bg,            colors.view_bg,                    colors.headerbar_bg,
         colors.headerbar_backdrop,   colors.sidebar_bg,                 colors.sidebar_backdrop,
         colors.secondary_sidebar_bg, colors.secondary_sidebar_backdrop, colors.card_bg,
-        colors.thumbnail_bg,         colors.overview_bg,
+        colors.thumbnail_bg,         colors.overview_bg,                colors.active_toggle_bg,
     };
     for (translucent) |color| try testing.expectEqual(0.5, color.?.alpha);
     const solid = [_]?kosm.Color{
-        colors.popover_bg,       colors.dialog_bg,      colors.active_toggle_bg,
-        colors.headerbar_border, colors.sidebar_border, colors.secondary_sidebar_border,
-        colors.window_fg,        colors.accent_bg,
+        colors.popover_bg,               colors.dialog_bg,
+        colors.headerbar_border,         colors.sidebar_border,
+        colors.secondary_sidebar_border, colors.window_fg,
+        colors.accent_bg,
     };
     for (solid) |color| try testing.expectEqual(1, color.?.alpha);
     // The surfaces differ from the window by lightness only, so the alpha changes nothing else.
