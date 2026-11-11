@@ -4,6 +4,10 @@
     .fingerprint = 0x368c556866b001e2, // Changing this has security and trust implications.
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
+        .kosm_ini = .{
+            .url = "git+https://git.nnstdios.com/ktisigonos/kosm_ini?ref=master#ccbfe4016b297cecde3bf73c99d96d54810fae91",
+            .hash = "kosm_ini-0.0.0-qA7bnYG4AABhc5ewGmZNJoF75IG1LLF35cCXSgH7Vd3H",
+        },
         .kosm_css = .{
             .url = "git+https://git.nnstdios.com/ktisigonos/kosm_css?ref=master#346b3fce02010728c2aa9e838c978661a53e22e6",
             .hash = "kosm_css-0.0.0-oGvx3AUZAAB3d6Mm_oSrGXFiOXPc8oJ9YcDPW3lFIwvF",
@@ -20,6 +24,11 @@
         "App.zig",
         "Colors.zig",
         "gtk3.zig",
+        "gtkrc.zig",
+        "xsettingsd.zig",
+        "quoting.zig",
+        "Settings.zig",
+        "SettingsFiles.zig",
         "README.md",
     },
 }
