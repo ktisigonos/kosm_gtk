@@ -29,11 +29,13 @@ variable overrides the theme everywhere: leave it unset.
 `gtk_application_prefer_dark_theme` from the mode. It sets windows from black (white in light mode) with its surface steps, text from
 white, the accent cyan and the states red, green and yellow, each with readable text from the
 theme's `contrast.on`; shadows and the scrollbar outline are the theme's `surface.shadow`.
-Windows, views, header bars, sidebars, cards, thumbnails, the tab overview and the active toggle
-take the theme's `background_alpha`, so a translucent kosmos makes GTK apps translucent like its
-terminals; popovers, dialogs, borders and the accent and state colors stay opaque so they read
-over any content.
-Surfaces drawn over the window (views, sidebars, cards) add to its opacity where they cover it.
+Windows, the tab overview and the active toggle take the theme's `background_alpha`, so a
+translucent kosmos makes GTK apps translucent like its terminals. GTK paints header bars,
+sidebars, views, cards and thumbnails over the window's own background, and two translucent
+layers stack to a higher alpha, so these are written as fainter tints (the alpha squared) with
+their color pushed away from the window's: stacked, they show their color at close to the
+window's alpha (0.625 for 0.5). Popovers, dialogs, borders and the accent and state colors stay
+opaque so they read over any content.
 
 ## Fields
 

@@ -37,11 +37,11 @@ const gtk4_only = [_][]const u8{ "active_toggle_bg", "active_toggle_fg", "overvi
 
 /// Colors from the theme: windows from black (white in light mode) with its surface steps,
 /// text from white, the accent cyan and the states red, green and yellow, each with readable
-/// text from the theme's `contrast.on`; shadows are the theme's `surface.shadow`. Windows,
-/// views, header bars, sidebars, cards, thumbnails and the tab overview take the theme's
-/// `background_alpha`, and so does the active toggle; popovers, dialogs and borders stay
-/// opaque. The GTK
-/// theme is adw-gtk3 in the theme's mode, which apps are told to prefer.
+/// text from the theme's `contrast.on`; shadows are the theme's `surface.shadow`. Windows, the
+/// tab overview and the active toggle take the theme's `background_alpha`; header bars,
+/// sidebars, views, cards and thumbnails, which GTK draws over the window's background, are
+/// tints over it that show their color at close to that alpha. Popovers, dialogs and borders
+/// stay opaque. The GTK theme is adw-gtk3 in the theme's mode, which apps are told to prefer.
 pub fn from(theme: kosm.Theme) App {
     const dark = theme.mode == .dark;
     return .{
@@ -84,25 +84,25 @@ fn colorsFrom(theme: kosm.Theme) Colors {
         .@"error" = bright.apply(palette.red),
         .window_bg = background,
         .window_fg = foreground,
-        .view_bg = variations.surface.sunken.apply(background),
+        .view_bg = overWindow(variations.surface.sunken.apply(background), background),
         .view_fg = foreground,
-        .headerbar_bg = raised,
+        .headerbar_bg = overWindow(raised, background),
         .headerbar_fg = foreground,
         .headerbar_border = border,
-        .headerbar_backdrop = background,
+        .headerbar_backdrop = overWindow(background, background),
         .headerbar_shade = shade,
         .headerbar_darker_shade = shade,
-        .sidebar_bg = raised,
+        .sidebar_bg = overWindow(raised, background),
         .sidebar_fg = foreground,
-        .sidebar_backdrop = background,
+        .sidebar_backdrop = overWindow(background, background),
         .sidebar_shade = shade,
         .sidebar_border = border,
-        .secondary_sidebar_bg = raised,
+        .secondary_sidebar_bg = overWindow(raised, background),
         .secondary_sidebar_fg = foreground,
-        .secondary_sidebar_backdrop = background,
+        .secondary_sidebar_backdrop = overWindow(background, background),
         .secondary_sidebar_shade = shade,
         .secondary_sidebar_border = border,
-        .card_bg = raised,
+        .card_bg = overWindow(raised, background),
         .card_fg = foreground,
         .card_shade = shade,
         .dialog_bg = overlay,
@@ -110,7 +110,7 @@ fn colorsFrom(theme: kosm.Theme) Colors {
         .popover_bg = overlay,
         .popover_fg = foreground,
         .popover_shade = shade,
-        .thumbnail_bg = raised,
+        .thumbnail_bg = overWindow(raised, background),
         .thumbnail_fg = foreground,
         .shade = shade,
         .active_toggle_bg = variations.surface.overlay.apply(background),
@@ -119,6 +119,24 @@ fn colorsFrom(theme: kosm.Theme) Colors {
         .overview_fg = foreground,
         .scrollbar_outline = shade,
     };
+}
+
+/// `surface` as a tint over `window`, whose background GTK paints under every surface. Two
+/// translucent layers stack to a higher alpha, so a translucent surface gets the window's alpha
+/// squared and a color pushed away from the window's, and the stack shows `surface`'s color at
+/// close to the window's alpha. An opaque window leaves `surface` as it is.
+fn overWindow(surface: kosm.Color, window: kosm.Color) kosm.Color {
+    const window_alpha = window.alpha;
+    if (window_alpha >= 1) return surface;
+    var tint = surface;
+    tint.alpha = window_alpha * window_alpha;
+    if (tint.alpha == 0) return tint;
+    const stacked_alpha = tint.alpha + window_alpha * (1 - tint.alpha);
+    const pushed = window.mix(surface, stacked_alpha / tint.alpha);
+    tint.lightness = std.math.clamp(pushed.lightness, 0, 1);
+    tint.chroma = @max(pushed.chroma, 0);
+    tint.hue = pushed.hue;
+    return tint;
 }
 
 /// Writes block `kosm` of each set stylesheet (`--<name>-color` properties for GTK 4,
@@ -249,30 +267,47 @@ test "a null file is not written, and from sets every color" {
     try testing.expectEqual(1, fixture.plan.files.items.len);
 }
 
-test "the window's surfaces take the background alpha, popovers, dialogs and borders stay opaque" {
+test "translucent windows: surfaces over the window are tints, popovers and borders stay opaque" {
     var theme = kosm.Theme.from(.{ .black = kosm.hex("041c26"), .white = kosm.hex("a3c5cc") }, .dark);
     theme.background_alpha = 0.5;
     const colors = from(theme).colors;
-    const translucent = [_]?kosm.Color{
-        colors.window_bg,            colors.view_bg,                    colors.headerbar_bg,
-        colors.headerbar_backdrop,   colors.sidebar_bg,                 colors.sidebar_backdrop,
-        colors.secondary_sidebar_bg, colors.secondary_sidebar_backdrop, colors.card_bg,
-        colors.thumbnail_bg,         colors.overview_bg,                colors.active_toggle_bg,
-    };
-    for (translucent) |color| try testing.expectEqual(0.5, color.?.alpha);
-    const solid = [_]?kosm.Color{
-        colors.popover_bg,               colors.dialog_bg,
-        colors.headerbar_border,         colors.sidebar_border,
-        colors.secondary_sidebar_border, colors.window_fg,
-        colors.accent_bg,
-    };
-    for (solid) |color| try testing.expectEqual(1, color.?.alpha);
-    // The surfaces differ from the window by lightness only, so the alpha changes nothing else.
     var opaque_theme = theme;
     opaque_theme.background_alpha = 1;
     const opaque_colors = from(opaque_theme).colors;
-    try testing.expectEqual(opaque_colors.view_bg.?.lightness, colors.view_bg.?.lightness);
+    for ([_]?kosm.Color{ colors.window_bg, colors.overview_bg, colors.active_toggle_bg }) |color| try testing.expectEqual(0.5, color.?.alpha);
+    for ([_]?kosm.Color{ colors.popover_bg, colors.dialog_bg, colors.headerbar_border, colors.sidebar_border, colors.window_fg, colors.accent_bg }) |color| try testing.expectEqual(1, color.?.alpha);
     try testing.expectEqual(opaque_colors.popover_bg.?, colors.popover_bg.?);
+    const window = colors.window_bg.?;
+    const Pair = struct { tint: ?kosm.Color, intended: ?kosm.Color };
+    const pairs = [_]Pair{
+        .{ .tint = colors.view_bg, .intended = opaque_colors.view_bg },
+        .{ .tint = colors.headerbar_bg, .intended = opaque_colors.headerbar_bg },
+        .{ .tint = colors.sidebar_bg, .intended = opaque_colors.sidebar_bg },
+        .{ .tint = colors.sidebar_backdrop, .intended = opaque_colors.sidebar_backdrop },
+        .{ .tint = colors.card_bg, .intended = opaque_colors.card_bg },
+        .{ .tint = colors.thumbnail_bg, .intended = opaque_colors.thumbnail_bg },
+    };
+    for (pairs) |pair| {
+        const tint = pair.tint.?;
+        try testing.expectEqual(0.25, tint.alpha);
+        // Painted over the window as GTK does, in sRGB, the tint shows the opaque theme's color.
+        const stacked_alpha = tint.alpha + window.alpha * (1 - tint.alpha);
+        const tint_rgb = tint.toRgb();
+        const window_rgb = window.toRgb();
+        const intended = pair.intended.?.toRgb();
+        inline for (.{ "red", "green", "blue" }) |channel| {
+            const stacked = (tint.alpha * @field(tint_rgb, channel) + window.alpha * (1 - tint.alpha) * @field(window_rgb, channel)) / stacked_alpha;
+            try testing.expectApproxEqAbs(@field(intended, channel), stacked, 0.02);
+        }
+    }
+}
+
+test "an opaque window leaves surfaces as they are, a clear one makes them clear" {
+    const surface = kosm.hex("0d2630");
+    try testing.expectEqual(surface, overWindow(surface, kosm.hex("041c26")));
+    var clear = kosm.hex("041c26");
+    clear.alpha = 0;
+    try testing.expectEqual(0, overWindow(surface, clear).alpha);
 }
 
 test "settings are written whole to every settings file, each with the keys its GTK reads" {
