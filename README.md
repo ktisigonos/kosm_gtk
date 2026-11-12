@@ -26,9 +26,9 @@ apply the app also sets the matching `gsettings` keys of `org.gnome.desktop.inte
 variable overrides the theme everywhere: leave it unset.
 
 `from(theme)` sets the GTK theme to `adw-gtk3-dark` (`adw-gtk3` in light mode) and
-`gtk_application_prefer_dark_theme` from the mode. It sets windows from black (white in light mode) with its surface steps, text from
-white, the accent cyan and the states red, green and yellow, each with readable text from the
-theme's `contrast.on`; shadows and the scrollbar outline are the theme's `surface.shadow`.
+`gtk_application_prefer_dark_theme` from the mode. It sets windows from the theme's background role with its surface steps, text from
+the foreground role, the accent and the error (also destructive), success and warning roles,
+each with readable text from the theme's `contrast.on`; shadows and the scrollbar outline are the theme's `surface.shadow`.
 Windows, the tab overview and the active toggle take the theme's `background_alpha`, so a
 translucent kosmos makes GTK apps translucent like its terminals. GTK paints header bars,
 sidebars, views, cards and thumbnails over the window's own background, and two translucent
